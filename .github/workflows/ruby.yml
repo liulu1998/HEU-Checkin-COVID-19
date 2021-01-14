@@ -5,9 +5,9 @@ on:
   # 否则由于仓库变动会导致 log 文件提交失败
   # Coordinated Universal Time (UTC)
   # schedule:
-  #   - cron: "20 23 * * *"
+  #   - cron: "20 0,1,23 * * *"
   # workflow_run:
-  #   workflows: ["Python Checkin"]
+  #   workflows: ["Python 打卡"]
   #   types: 
   #     - completed
   workflow_dispatch:

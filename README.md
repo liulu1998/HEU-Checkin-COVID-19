@@ -3,6 +3,8 @@
 <div align="center">HEU-Checkin-COVID-19</div></br>
 
 
+**由于最近校园网调整，校外访问不稳定，建议手动打卡，而不是完全依赖此项目**
+
 利用 GitHub Actions 为 HEU 宅家人士每日平安行动打卡提供便利的小项目，使用前请确认自己健康状况。
 
 请参考 [Wiki](https://github.com/monsterxcn/HEU-Checkin-COVID-19/wiki) 自行选择部署位置和代码版本，并修改配置。
@@ -25,8 +27,7 @@
 
 **叨叨**
 
- - Python by [ZJW](https://zjw1.top/2020/03/10/auto_checkin_during_covid19_and_cas_sso_learning/)
- - Ruby by [XYenon](https://gist.github.com/XYenon/79317d63e7f769e5bdff5b595d709b65)
+ - Python by [ZJW](https://zjw1.top/2020/03/10/auto_checkin_during_covid19_and_cas_sso_learning/) / Ruby by [XYenon](https://gist.github.com/XYenon/79317d63e7f769e5bdff5b595d709b65)
  - 建议您使用 Python 版本 GitHub Actions 部署
  - 建议您至少启用邮件提醒和 Server 酱微信提醒之一
  - 如果一次打卡不能安心的话那就多打几次
