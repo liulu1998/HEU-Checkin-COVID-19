@@ -14,19 +14,29 @@ Created on 2020-04-13 20:20
 @author: ZhangJiawei & Monst.x
 """
 
-import requests
-import lxml.html
-import re
 import json
 import random
+import re
 import time
-import smtplib
 import traceback
 
-myid = "StudentNum"
-mypass = "Password"
-mybound = "boundFields"
-mydata = "formData"
+import lxml.html
+import requests
+
+"""
+请在config.json中填写相应信息
+my_id: 学号
+my_pass: 统一认证密码
+my_bound: 获取方式见原作者blog：https://blog.monsterx.cn/code/heu-auto-checkin-covid19/
+my_data: 同上。注意，直接在json中粘贴字典即ok，下边统一转字符串
+"""
+with open("config.json", "r", encoding="utf-8") as f:
+    info_data = json.load(f)
+    my_id = info_data["myid"]
+    my_pass = info_data["mypass"]
+    my_bound = info_data["mybound"]
+    # 这玩意原本是字典，用json库给dumps成字符串
+    my_data = json.dumps(info_data["mydata"])
 
 headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -37,48 +47,52 @@ headers = {
     "Content-Type": "application/x-www-form-urlencoded",
     "Cookie": "MESSAGE_TICKET=%7B%22times%22%3A0%7D; ",
     "Host": "cas.hrbeu.edu.cn",
-    "Referer": "https://cas.hrbeu.edu.cn/cas/login?service=http%3A%2F%2Fjkgc.hrbeu.edu.cn%2Finfoplus%2Flogin%3FretUrl%3Dhttp%253A%252F%252Fjkgc.hrbeu.edu.cn%252Finfoplus%252Fform%252FJSXNYQSBtest%252Fstart",
     "Upgrade-Insecure-Requests": "1",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.18362"
 }
 
 data = {
-    "username": myid,                       # 学号
-    "password": mypass                      # 教务处密码
+    "username": my_id,  # 学号
+    "password": my_pass  # 教务处密码
 }
+
+
 def findStr(source, target):
     return source.find(target) != -1
+
+
+# 这些是提示变量，无需设置初值
 title = ""
 msg = ""
-
+proxies = {"http": None, "https": None}
 try:
-    #get
-    url_login = 'https://cas.hrbeu.edu.cn/cas/login?service=http%3A%2F%2Fjkgc.hrbeu.edu.cn%2Finfoplus%2Fform%2FJSXNYQSBtest%2Fstart'
+    # get
+    url_login = 'https://cas.hrbeu.edu.cn/cas/login?'
     print("============================\n[debug] Begin to login ...")
     sesh = requests.session()
-    req = sesh.get(url_login)
+    req = sesh.get(url_login, proxies=proxies)
     html_content = req.text
 
-    #post
+    # post
     login_html = lxml.html.fromstring(html_content)
-    hidden_inputs=login_html.xpath(r'//div[@id="main"]//input[@type="hidden"]')
-    user_form = {x.attrib["name"] : x.attrib["value"] for x in hidden_inputs}
+    hidden_inputs = login_html.xpath(r'//div[@id="main"]//input[@type="hidden"]')
+    user_form = {x.attrib["name"]: x.attrib["value"] for x in hidden_inputs}
 
-    user_form["username"]=data['username']
-    user_form["password"]=data['password']
-    user_form["captcha"]=''
-    user_form["submit"]='登 录'
+    user_form["username"] = data['username']
+    user_form["password"] = data['password']
+    user_form["captcha"] = ''
+    user_form["submit"] = '登 录'
     headers['Cookie'] = headers['Cookie'] + req.headers['Set-cookie']
+    headers[
+        'User-Agent'] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 Edg/87.0.664.75"
+    req.url = f'https://cas.hrbeu.edu.cn/cas/login'
+    response302 = sesh.post(req.url, data=user_form, headers=headers, proxies=proxies)
+    # casRes = response302.history[0]
+    # print("[debug] CAS response header", findStr(casRes.headers['Set-Cookie'], 'CASTGC'))
 
-    req.url = f'https://cas.hrbeu.edu.cn/cas/login;jsessionid={req.cookies.get("JSESSIONID")}?service=http%3A%2F%2Fjkgc.hrbeu.edu.cn%2Finfoplus%2Fform%2FJSXNYQSBtest%2Fstart'
-    response302 = sesh.post(req.url, data=user_form, headers=headers)
-    casRes = response302.history[0]
-    print("[debug] CAS response header", findStr(casRes.headers['Set-Cookie'],'CASTGC'))
-
-    #get
-    jkgc_response = sesh.get(response302.url)
-
-    #post
+    # get
+    jkgc_response = sesh.get("http://jkgc.hrbeu.edu.cn/infoplus/form/JSXNYQSBtest/start", proxies=proxies)
+    # post
     headers['Accept'] = '*/*'
     headers['Cookie'] = jkgc_response.request.headers['Cookie']
     headers['Host'] = 'jkgc.hrbeu.edu.cn'
@@ -92,20 +106,18 @@ try:
         'csrfToken': csrfToken,
         'formData': {
             '_VAR_URL': jkgc_response.url,
-            '_VAR_URL_Attr': {
-                'ticket': re.match(r'.*ticket=(.*)', jkgc_response.url).group(1)
-            }
+            "_VAR_URL_Attr": {}
         }
     }
     jkgc_form['formData'] = json.dumps(jkgc_form['formData'])
     jkgc_url = 'http://jkgc.hrbeu.edu.cn/infoplus/interface/start'
-    response3 = sesh.post(jkgc_url, data=jkgc_form, headers=headers)
+    response3 = sesh.post(jkgc_url, data=jkgc_form, headers=headers, proxies=proxies)
 
-    #get
+    # get
     form_url = json.loads(response3.text)['entities'][0]
     form_response = sesh.get(form_url)
 
-    #post
+    # post
     headers['Accept'] = 'application/json, text/javascript, */*; q=0.01'
     headers['Referer'] = form_url
     headers['X-Requested-With'] = 'XMLHttpRequest'
@@ -118,18 +130,18 @@ try:
     submit_form = {
         'actionId': '1',
         # boundFields 修改位置
-        'boundFields': mybound,
+        'boundFields': my_bound,
         'csrfToken': csrfToken2,
         # formData 修改位置
-        'formData': mydata,
+        'formData': my_data,
         'lang': 'zh',
         'nextUsers': '{}',
         'rand': str(random.random() * 999),
         'remark': '',
-        'stepId': re.match(r'.*form/(\d*?)/',form_response.url).group(1),
-        'timestamp': str(int(time.time()+0.5))
+        'stepId': re.match(r'.*form/(\d*?)/', form_response.url).group(1),
+        'timestamp': str(int(time.time() + 0.5))
     }
-    response_end = sesh.post(submit_url, data=submit_form, headers=headers)
+    response_end = sesh.post(submit_url, data=submit_form, headers=headers, proxies=proxies)
     resJson = json.loads(response_end.text)
 
     ## 表单填写完成，返回结果
@@ -143,11 +155,15 @@ try:
     if (resJson['errno'] == 0):
         print('[info] Checkin succeed with jsoncode', resJson['ecode'])
         title = f'打卡成功 <{submit_form["stepId"]}>'
-        msg = '\t表单地址: ' + form_response.url + '\n\n\t表单状态: \n\t\terrno：' + str(resJson['errno']) + '\n\t\tecode：' + str(resJson['ecode']) + '\n\t\tentities：' + str(resJson['entities']) + '\n\n\n\t完整返回：' + response_end.text
+        msg = '\t表单地址: ' + form_response.url + '\n\n\t表单状态: \n\t\terrno：' + str(
+            resJson['errno']) + '\n\t\tecode：' + str(resJson['ecode']) + '\n\t\tentities：' + str(
+            resJson['entities']) + '\n\n\n\t完整返回：' + response_end.text
     else:
         print('[error] Checkin error with jsoncode', resJson['ecode'])
         title = f'打卡失败！校网出错'
-        msg = '\t表单地址: ' + form_response.url + '\n\n\t错误信息: \n\t\terrno：' + str(resJson['errno']) + '\n\t\tecode：' + str(resJson['ecode']) + '\n\t\tentities：' + str(resJson['entities']) + '\n\n\n\t完整返回：' + response_end.text
+        msg = '\t表单地址: ' + form_response.url + '\n\n\t错误信息: \n\t\terrno：' + str(
+            resJson['errno']) + '\n\t\tecode：' + str(resJson['ecode']) + '\n\t\tentities：' + str(
+            resJson['entities']) + '\n\n\n\t完整返回：' + response_end.text
 except:
     print('\n[error] :.:.:.:.: Except return :.:.:.:.:')
     err = traceback.format_exc()
@@ -182,6 +198,6 @@ finally:
     #     print ("[info] Success: The email was sent successfully")
     # except smtplib.SMTPException:
     #     print ("[error] Error: Can not send mail")
-    
+
     print('[info] Task Finished at', time.strftime("%Y-%m-%d %H:%M:%S %A", time.localtime()))
     print('============================\n')
