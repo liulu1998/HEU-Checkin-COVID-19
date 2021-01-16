@@ -6,7 +6,7 @@
 
 请事先安装好 lxml 和 requests 模块
 
-    pip install lxml requests
+    pip install lxml requests yagmail
 
 然后修改 26-29 行为自己的数据，如有需要请自行配置 161-184 行的 SMTP 发信
 
@@ -181,11 +181,13 @@ if __name__ == '__main__':
     finally:
         print(':.:.:.:.: Finally :.:.:.:.:')
 
+        subject = "平安行动 打卡成功" if success else "平安行动 打卡失败！"
         sender = EmailSender(conf_path="./config.json")
+
         if email_receiver is not "" and sender.check():
             sender.send_email(
                 receiver=email_receiver,
-                subject="平安行动 打卡成功！",
+                subject=subject,
                 text="邮件自动生成, 无需回复"
             )
 
