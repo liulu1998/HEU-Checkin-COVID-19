@@ -15,6 +15,8 @@ Created on 2020-04-13 20:20
 @author: Liu Chongpeng & Liu Lu
 """
 
+import os
+import sys
 import json
 import random
 import re
@@ -72,6 +74,7 @@ proxies = {"http": None, "https": None}
 success = True
 
 if __name__ == '__main__':
+    os.chdir(os.path.dirname(sys.argv[0]))
     try:
         # get
         url_login = 'https://cas.hrbeu.edu.cn/cas/login?'
@@ -181,7 +184,7 @@ if __name__ == '__main__':
     finally:
         print(':.:.:.:.: Finally :.:.:.:.:')
 
-        subject = "平安行动 打卡成功" if success else "平安行动 打卡失败！"
+        subject = "平安行动 打卡成功" if success else "平安行动 打卡失败！！"
         sender = EmailSender(conf_path="./config.json")
 
         if email_receiver is not "" and sender.check():
